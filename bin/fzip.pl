@@ -34,11 +34,10 @@ use warnings;
 use lib qw(../lib);
 
 use Getopt::Long;
-use Sys::CPU;
 use Data::Dumper;
 
 use Compress::FastArchive;
-use Compress::FastArchive::Manifest;
+
 
 my %opts;
 
@@ -49,8 +48,7 @@ GetOptions (
 );
 
 my %opts_deflts = (
-	  maxthreads => &getNumCPUs()
-	, extract => 0
+	  extract => 0
 );
 
 map {
@@ -61,18 +59,6 @@ grep { !/^-/ } @ARGV;
 
 my $archive = shift @ARGV;
 my @files = @ARGV;
-
-print join("\n", @files) . "\n";
-
-my $manifest = Compress::FastArchive::Manifest->new( dbfile => '/home/dave/Desktop/testManifest.sqlite' )
-        or die ("Unable to create manifest...\n");
-        
-print Dumper($manifest);
-
-$manifest->setArchiveInfo( 'backuptag',  'testing manifest object.' )
-        or die ("Unable to set backuptag.");
-$manifest->addFileSet( basename => '/home/dave/Desktop', subarchive => 'fileset-1.zip' );
-$manifest->addFileSet( basename => '/home/dave/dev', subarchive =>  'fileset-2.zip' );
 
 if ( $opts{extract} )
 {
@@ -94,15 +80,8 @@ else
 	exit ($rc ? 0 : $rc);
 }
 
-
-
 exit 0;
 
-
-sub getNumCPUs
-{
-	return Sys::CPU::cpu_count();
-}
 
 sub extract_files 
 {
@@ -120,6 +99,10 @@ sub create_archive
 
 	my $archive = Compress::FastArchive->new( %opts )
 		or return undef;
+	
+	map {
+		$archive->addFileSet( $_ );
+	} @{ $opts{files} };
 
 }
 

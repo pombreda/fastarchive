@@ -6,8 +6,10 @@
 
 package Compress::FastArchive;
 
+use Compress::FastArchive::Manifest;
 use MultiThread;
 use Thread::Queue;
+use File::Temp qw(tempdir);
 
 sub new
 {
@@ -19,6 +21,11 @@ sub new
         $self->{WorkQueue} = Thread::Queue->new;
         $self->{ResponseQueue} = Thread::Queue->new;
         
+        $self->{WorkDir} = $opts{WorkDir} ? $opts{WorkDir} : tempdir();
+        
+        $self->{Manifest} = Compress::FastArchive::Manifest->new( dbfile => $self->{WorkDir} . '/manifest.sqlite' )
+                or ( warn ("Unable to create manifest...\n") and return undef);
+                
         return bless ($self, $class);
 }
 
@@ -48,7 +55,7 @@ sub _setArchiveInfo
         my $self = shift;
         my ($layer, $key, $val) = @_;
         
-        return $self->{manifest}->setArchiveInfo($layer, $key, $value);
+        return $self->{Manifest}->setArchiveInfo($layer, $key, $value);
 }
 
 1;
