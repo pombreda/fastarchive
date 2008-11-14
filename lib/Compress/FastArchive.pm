@@ -10,6 +10,7 @@ use Compress::FastArchive::Manifest;
 use MultiThread;
 use Thread::Queue;
 use File::Temp qw(tempdir);
+use Data::Dumper;
 
 sub new
 {
@@ -18,15 +19,41 @@ sub new
         
         my $self = {};
                
-        $self->{WorkQueue} = Thread::Queue->new;
-        $self->{ResponseQueue} = Thread::Queue->new;
+        $self->{MaxThreads} = $opts{maxthreads};
         
         $self->{WorkDir} = $opts{WorkDir} ? $opts{WorkDir} : tempdir();
         
         $self->{Manifest} = Compress::FastArchive::Manifest->new( dbfile => $self->{WorkDir} . '/manifest.sqlite' )
                 or ( warn ("Unable to create manifest...\n") and return undef);
                 
-        return bless ($self, $class);
+        $self = bless ($self, $class);
+        
+        $self->startCompressors;
+        
+        map {
+                $self->addFileSet($_);
+        } @{ $opts{FileSets} }
+                
+        return $self;
+}
+
+sub startCompressors
+{
+        my $self = shift;
+        
+        $self->{WorkerPool} = MultiThread::WorkerPool->new(  EntryPoint => \&compressFileSet
+                                                           , MaxWorkers => $self->{MaxThreads}
+                                                           )
+}
+
+# This is the thread entry point. It is responsible for consuming requests and
+# effecting the compression.
+
+sub compressFileSet
+{
+        my $request = shift;
+        print Dumper($request);
+        return 1;
 }
 
 sub addFileSet
@@ -34,8 +61,10 @@ sub addFileSet
         my $self = shift;
         my %opts = @_;
         
-        return $self->{WorkQueue}->enqueue( $opts{FileSet} );
+        return $self->{WorkerPool}->enqueue( $opts{FileSet} );
 }
+
+
 
 sub finish
 {

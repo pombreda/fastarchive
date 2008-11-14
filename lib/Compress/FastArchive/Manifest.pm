@@ -7,7 +7,6 @@ package Compress::FastArchive::Manifest;
 
 use DBI;
 use DBD::SQLite;
-use File::Temp;
 
 use base qw(DBI);
 
